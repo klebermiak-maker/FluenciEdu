@@ -21,6 +21,9 @@ export interface CreateAssessmentPayload {
   duracao_segundos: number; // Real recorded duration
   audio_mime_type: string;
   observacoes?: string;
+  aplicacao_id?: string | null;
+  tentativa_numero?: number;
+  is_tentativa_selecionada?: boolean;
 }
 
 export interface AssessmentFilterOptions {
@@ -132,6 +135,9 @@ export const assessmentService = {
       observacoes: payload.observacoes?.trim() || null,
       status_armazenamento: 'salvo',
       status: 'concluida',
+      aplicacao_id: payload.aplicacao_id || null,
+      tentativa_numero: payload.tentativa_numero || 1,
+      is_tentativa_selecionada: payload.is_tentativa_selecionada ?? true,
       created_at: nowUtc,
       updated_at: nowUtc,
     };

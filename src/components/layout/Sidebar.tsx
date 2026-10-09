@@ -15,7 +15,9 @@ import {
   Sparkles,
   Database,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  ClipboardList,
+  HelpCircle
 } from 'lucide-react';
 import { NavigationPage, UserRole } from '../../types/database';
 import { useAuth } from '../../contexts/AuthContext';
@@ -39,17 +41,24 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { 
+    id: 'applications', 
+    label: 'Aplicações com Turma', 
+    icon: ClipboardList,
+    badge: 'Fase 5',
+    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+  },
+  { 
+    id: 'assessments', 
+    label: 'Gravações & Correção', 
+    icon: Mic,
+    badge: 'Áudio',
+    badgeColor: 'bg-blue-100 text-blue-800 border-blue-200',
+  },
+  { id: 'materials', label: 'Materiais de Leitura', icon: FileText },
   { id: 'schools', label: 'Escolas', icon: Building2 },
   { id: 'classes', label: 'Turmas', icon: GraduationCap },
   { id: 'students', label: 'Alunos', icon: Users },
-  { id: 'materials', label: 'Materiais de Leitura', icon: FileText },
-  { 
-    id: 'assessments', 
-    label: 'Avaliações', 
-    icon: Mic,
-    badge: 'Gravação',
-    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-  },
   { id: 'import', label: 'Importar Alunos', icon: FileSpreadsheet },
   { 
     id: 'reports', 
@@ -59,6 +68,7 @@ const NAV_ITEMS: NavItem[] = [
     badgeColor: 'bg-purple-100 text-purple-800 border-purple-200',
     isUpcoming: false 
   },
+  { id: 'guide', label: 'Como Usar', icon: HelpCircle },
   { id: 'profile', label: 'Meu Perfil', icon: UserCheck },
 ];
 

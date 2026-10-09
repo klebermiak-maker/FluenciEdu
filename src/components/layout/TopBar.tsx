@@ -35,13 +35,21 @@ const PAGE_TITLES: Record<NavigationPage, { title: string; subtitle: string }> =
     title: 'Importação em Lote via CSV',
     subtitle: 'Carregamento rápido de estudantes com validação automática',
   },
+  applications: {
+    title: 'Aplicações de Leitura com a Turma',
+    subtitle: 'Aplicação sequencial das avaliações com os estudantes da turma',
+  },
   assessments: {
-    title: 'Avaliações de Fluência Leitora',
-    subtitle: 'Gravação e armazenamento de áudio de leitura dos alunos (Fase 2)',
+    title: 'Gravações & Correção de Leitura',
+    subtitle: 'Histórico de áudios gravados, correção manual guiada e análise assistida',
   },
   reports: {
-    title: 'Relatórios & Diagnósticos',
-    subtitle: 'Módulo de métricas de fluência, precisão e evolução (Fase 3)',
+    title: 'Relatórios & Diagnósticos de Fluência',
+    subtitle: 'Indicadores pedagógicos, perfil leitor e exportação em PDF de Itaúba - MT',
+  },
+  guide: {
+    title: 'Guia de Uso da Plataforma',
+    subtitle: 'Passo a passo prático para aplicação na escola, microfone e correção',
   },
   profile: {
     title: 'Meu Perfil & Configurações',

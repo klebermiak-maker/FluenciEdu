@@ -32,6 +32,7 @@ export interface ClassRoom {
   professor_id?: string | null;
   escola_id: string;
   ano_letivo: number;
+  arquivado?: boolean;
   created_at: string;
   updated_at?: string;
 }
@@ -43,6 +44,8 @@ export interface Student {
   data_nascimento: string; // YYYY-MM-DD
   turma_id: string;
   escola_id: string;
+  codigo_inep?: string;
+  arquivado?: boolean;
   created_at: string;
   updated_at?: string;
 }
@@ -144,6 +147,36 @@ export interface Assessment {
   status_armazenamento: AssessmentAudioStorageStatus;
   status: AssessmentStatus;
   avaliacao_detalhes?: EvaluationDetails;
+  aplicacao_id?: string | null;
+  tentativa_numero?: number; // 1, 2, 3...
+  is_tentativa_selecionada?: boolean;
+  created_at: string;
+  updated_at?: string;
+}
+
+export type ApplicationStudentStatus = 'sem_gravacao' | 'gravacao_salva' | 'em_correcao' | 'revisada' | 'ausente';
+export type ReadingApplicationStatus = 'em_andamento' | 'concluida' | 'arquivada';
+
+export interface ReadingApplication {
+  id: string;
+  titulo: string; // ex: "Diagnóstico 1º Bimestre - 2º Ano A"
+  descricao?: string;
+  turma_id: string;
+  escola_id: string;
+  professor_id: string;
+  professor_nome: string;
+  data_prevista: string; // YYYY-MM-DD
+  material_id: string;
+  material_titulo: string;
+  material_tipo: ReadingMaterialType;
+  material_conteudo_snapshot: string;
+  modalidade: AssessmentMode;
+  protocolo_versao: string;
+  alunos_ids: string[]; // Participantes selecionados
+  alunos_ausentes: string[]; // Alunos marcados como ausentes nesta aplicação
+  selected_tentativa_por_aluno?: Record<string, string>; // aluno_id -> assessment_id
+  status: ReadingApplicationStatus;
+  data_conclusao?: string;
   created_at: string;
   updated_at?: string;
 }
@@ -155,6 +188,7 @@ export interface CSVPreviewItem {
   data_nascimento: string;
   turma: string;
   turma_id?: string;
+  codigo_inep?: string;
   isValid: boolean;
   errors: string[];
   isDuplicate?: boolean;
@@ -162,6 +196,7 @@ export interface CSVPreviewItem {
 
 export type NavigationPage = 
   | 'dashboard'
+  | 'applications'
   | 'schools'
   | 'classes'
   | 'students'
@@ -169,4 +204,5 @@ export type NavigationPage =
   | 'import'
   | 'assessments'
   | 'reports'
+  | 'guide'
   | 'profile';

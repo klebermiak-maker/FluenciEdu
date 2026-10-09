@@ -60,6 +60,15 @@ service cloud.firestore {
         && data.duracao_segundos is number && data.duracao_segundos >= 0;
     }
 
+    function isValidApplication(data) {
+      return data.titulo is string && data.titulo.size() >= 2 && data.titulo.size() <= 200
+        && data.turma_id is string && isValidId(data.turma_id)
+        && data.escola_id is string && isValidId(data.escola_id)
+        && data.material_id is string && isValidId(data.material_id)
+        && data.modalidade in ['livre', '60_segundos']
+        && data.status in ['em_andamento', 'concluida', 'arquivada'];
+    }
+
     // Schools collection
     match /schools/{schoolId} {
       allow read: if true;
@@ -100,6 +109,13 @@ service cloud.firestore {
       allow read: if true;
       allow create, update: if isSignedIn() && isValidId(assessmentId) && isValidAssessment(request.resource.data);
       allow delete: if isSignedIn() && isValidId(assessmentId);
+    }
+
+    // Reading applications collection
+    match /applications/{applicationId} {
+      allow read: if true;
+      allow create, update: if isSignedIn() && isValidId(applicationId) && isValidApplication(request.resource.data);
+      allow delete: if isSignedIn() && isValidId(applicationId);
     }
   }
 }
