@@ -49,6 +49,32 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const totalStudents = students.length;
   const totalAssessments = assessments.length;
 
+  // Evaluated assessments
+  const evaluatedAssessments = assessments.filter(
+    (a) => a.avaliacao_detalhes && a.avaliacao_detalhes.estado_correcao === 'revisada'
+  );
+  const inCorrectionAssessments = assessments.filter(
+    (a) => a.avaliacao_detalhes && a.avaliacao_detalhes.estado_correcao === 'em_correcao'
+  );
+
+  const avgPCPM = evaluatedAssessments.length > 0
+    ? Math.round(
+        evaluatedAssessments.reduce(
+          (sum, a) => sum + (a.avaliacao_detalhes?.calculo?.pcpm || 0),
+          0
+        ) / evaluatedAssessments.length
+      )
+    : 0;
+
+  const avgPrecisao = evaluatedAssessments.length > 0
+    ? Math.round(
+        evaluatedAssessments.reduce(
+          (sum, a) => sum + (a.avaliacao_detalhes?.calculo?.taxa_precisao || 0),
+          0
+        ) / evaluatedAssessments.length
+      )
+    : 0;
+
   // Students per class computation
   const classStudentCounts = classes.map((c) => {
     const count = students.filter((s) => s.turma_id === c.id).length;
@@ -175,27 +201,27 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
         </div>
 
-        {/* Avaliações Realizadas (Preparado Fase 2) */}
+        {/* Avaliações Realizadas */}
         <div 
           onClick={() => onNavigate('assessments')}
           className="group relative cursor-pointer overflow-hidden rounded-2xl bg-white p-5 border border-slate-200/80 shadow-xs hover:shadow-md hover:border-amber-300 transition-all"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-              Avaliações Realizadas
+              Gravações & Diagnósticos
             </span>
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 group-hover:scale-110 transition-transform">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-purple-50 text-purple-700 group-hover:scale-110 transition-transform">
               <Mic className="h-6 w-6" />
             </div>
           </div>
           <div className="mt-4 flex items-baseline gap-2">
             <span className="text-3xl font-extrabold text-slate-900">{totalAssessments}</span>
-            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-              Fase 2 Ativa
+            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800">
+              {evaluatedAssessments.length} avaliadas
             </span>
           </div>
-          <div className="mt-3 flex items-center text-xs font-semibold text-emerald-600 group-hover:translate-x-1 transition-transform">
-            <span>Acessar avaliações de leitura</span>
+          <div className="mt-3 flex items-center text-xs font-semibold text-purple-700 group-hover:translate-x-1 transition-transform">
+            <span>Avaliar leituras & escutar áudio</span>
             <ArrowRight className="w-3.5 h-3.5 ml-1" />
           </div>
         </div>
@@ -283,7 +309,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           )}
         </div>
 
-        {/* Right 1 Col: Área Preparada para Futuros Gráficos */}
+        {/* Right 1 Col: Métricas e Diagnósticos de Fluência */}
         <div className="rounded-2xl bg-white border border-slate-200/80 p-6 shadow-xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-4 border-b border-slate-100">
@@ -292,57 +318,67 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   Métricas de Fluência
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Estrutura preparada para análise de dados
+                  Diagnóstico leitor em tempo real (Itaúba - MT)
                 </p>
               </div>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
-                BNCC
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800">
+                Ativo
               </span>
             </div>
 
             <div className="mt-5 space-y-4">
-              {/* Metric preview box 1: PPM */}
-              <div className="p-4 rounded-xl border border-dashed border-slate-300 bg-slate-50/70">
+              {/* Metric box 1: PCPM */}
+              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                     <TrendingUp className="w-4 h-4 text-emerald-600" />
-                    PCPM (Palavras Corretas / Minuto)
+                    PCPM Médio da Rede
                   </span>
-                  <span className="text-[11px] text-slate-400 font-medium">Aguardando Fase 2</span>
+                  <span className="text-xs font-extrabold text-emerald-700">
+                    {evaluatedAssessments.length > 0 ? `${avgPCPM} palavras/min` : 'Aguardando correções'}
+                  </span>
                 </div>
                 <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
-                  <div className="h-full bg-emerald-500 rounded-full w-2/3 opacity-30"></div>
+                  <div 
+                    className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(100, Math.max(5, (avgPCPM / 120) * 100))}%` }}
+                  ></div>
                 </div>
                 <p className="text-[11px] text-slate-500 mt-2">
-                  Calculado automaticamente após a leitura do texto padronizado.
+                  Palavras corretas por minuto calculadas sobre o tempo real avaliado.
                 </p>
               </div>
 
-              {/* Metric preview box 2: Precisão */}
-              <div className="p-4 rounded-xl border border-dashed border-slate-300 bg-slate-50/70">
+              {/* Metric box 2: Precisão */}
+              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                     <CheckCircle className="w-4 h-4 text-blue-600" />
-                    Índice de Precisão Leitora
+                    Taxa Média de Precisão
                   </span>
-                  <span className="text-[11px] text-slate-400 font-medium">Aguardando Fase 2</span>
+                  <span className="text-xs font-extrabold text-blue-700">
+                    {evaluatedAssessments.length > 0 ? `${avgPrecisao}%` : 'Sem avaliações'}
+                  </span>
                 </div>
                 <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
-                  <div className="h-full bg-blue-500 rounded-full w-4/5 opacity-30"></div>
+                  <div 
+                    className="h-full bg-blue-500 rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(100, Math.max(5, avgPrecisao))}%` }}
+                  ></div>
                 </div>
                 <p className="text-[11px] text-slate-500 mt-2">
-                  Porcentagem de palavras lidas sem hesitações ou substituições.
+                  Percentual de acertos sem substituição, omissão ou erro fonológico.
                 </p>
               </div>
 
-              {/* Metric preview box 3: Níveis de Leitor */}
-              <div className="p-4 rounded-xl border border-dashed border-slate-300 bg-slate-50/70">
+              {/* Metric box 3: Níveis de Leitor */}
+              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                     <BookOpen className="w-4 h-4 text-purple-600" />
-                    Classificação de Leitores
+                    Classificação Pedagógica
                   </span>
-                  <span className="text-[11px] text-slate-400 font-medium">Escala CAEd / MEC</span>
+                  <span className="text-[11px] text-purple-700 font-medium">Protocolo Local</span>
                 </div>
                 <div className="grid grid-cols-3 gap-1 text-center text-[10px] font-semibold">
                   <div className="py-1 rounded bg-rose-50 text-rose-700 border border-rose-200">Pré-leitor</div>
@@ -353,8 +389,18 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             </div>
           </div>
 
-          <div className="mt-6 pt-4 border-t border-slate-100 text-xs text-slate-500">
-            💡 <span className="font-semibold text-slate-700">Dica:</span> Garanta que todos os alunos estejam cadastrados e com suas turmas vinculadas para agilizar a aplicação das avaliações na próxima etapa.
+          <div className="mt-6 pt-4 border-t border-slate-100 flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={() => onNavigate('reports')}
+              className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-colors shadow-xs"
+            >
+              <span>Ver Relatórios e Diagnósticos</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+            <p className="text-[11px] text-slate-500 text-center">
+              Exportação em PDF oficial (Itaúba - MT) e planilhas CSV.
+            </p>
           </div>
         </div>
       </div>
