@@ -1,5 +1,7 @@
 import { Student } from '../types/database';
-import { supabase, isSupabaseConfigured, localDB } from './supabase';
+import { db, handleFirestoreError, OperationType } from './firebase';
+import { collection, getDocs, doc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { localDB } from './supabase';
 
 export interface CreateStudentDTO {
   nome: string;
@@ -16,32 +18,43 @@ export interface StudentFilters {
   sortBy?: 'nome_asc' | 'nome_desc' | 'recent';
 }
 
+const COLLECTION_NAME = 'students';
+
 export const studentService = {
   async list(filters?: StudentFilters): Promise<Student[]> {
-    if (isSupabaseConfigured && supabase) {
-      let query = supabase.from('students').select('*');
+    try {
+      const snap = await getDocs(collection(db, COLLECTION_NAME));
+      if (!snap.empty) {
+        let students = snap.docs.map((d) => d.data() as Student);
+        localDB.saveStudents(students);
 
-      if (filters?.escola_id) {
-        query = query.eq('escola_id', filters.escola_id);
-      }
-      if (filters?.turma_id) {
-        query = query.eq('turma_id', filters.turma_id);
-      }
-      if (filters?.search) {
-        query = query.or(`nome.ilike.%${filters.search}%,matricula.ilike.%${filters.search}%`);
-      }
+        if (filters?.escola_id) {
+          students = students.filter((s) => s.escola_id === filters.escola_id);
+        }
+        if (filters?.turma_id) {
+          students = students.filter((s) => s.turma_id === filters.turma_id);
+        }
+        if (filters?.search) {
+          const q = filters.search.toLowerCase().trim();
+          students = students.filter(
+            (s) =>
+              s.nome.toLowerCase().includes(q) ||
+              s.matricula.toLowerCase().includes(q)
+          );
+        }
 
-      if (filters?.sortBy === 'nome_desc') {
-        query = query.order('nome', { ascending: false });
-      } else if (filters?.sortBy === 'recent') {
-        query = query.order('created_at', { ascending: false });
-      } else {
-        query = query.order('nome', { ascending: true });
-      }
+        if (filters?.sortBy === 'nome_desc') {
+          students.sort((a, b) => b.nome.localeCompare(a.nome));
+        } else if (filters?.sortBy === 'recent') {
+          students.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        } else {
+          students.sort((a, b) => a.nome.localeCompare(b.nome));
+        }
 
-      const { data, error } = await query;
-      if (error) throw error;
-      return data || [];
+        return students;
+      }
+    } catch (err) {
+      console.warn('Carregando alunos do cache local devido ao Firestore:', err);
     }
 
     let students = localDB.getStudents();
@@ -73,17 +86,7 @@ export const studentService = {
   },
 
   async getById(id: string): Promise<Student | null> {
-    if (isSupabaseConfigured && supabase) {
-      const { data, error } = await supabase
-        .from('students')
-        .select('*')
-        .eq('id', id)
-        .single();
-      if (error) return null;
-      return data;
-    }
-
-    const students = localDB.getStudents();
+    const students = await this.list();
     return students.find((s) => s.id === id) || null;
   },
 
@@ -100,8 +103,9 @@ export const studentService = {
       throw new Error(`Já existe um aluno com a matrícula "${payload.matricula}" nesta escola.`);
     }
 
+    const id = `student-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
     const newStudent: Student = {
-      id: isSupabaseConfigured ? undefined as unknown as string : `student-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      id,
       nome: nomeNormalized,
       matricula: matriculaNormalized,
       data_nascimento: payload.data_nascimento,
@@ -110,20 +114,10 @@ export const studentService = {
       created_at: new Date().toISOString(),
     };
 
-    if (isSupabaseConfigured && supabase) {
-      const { data, error } = await supabase
-        .from('students')
-        .insert([{
-          nome: newStudent.nome,
-          matricula: newStudent.matricula,
-          data_nascimento: newStudent.data_nascimento,
-          turma_id: newStudent.turma_id,
-          escola_id: newStudent.escola_id,
-        }])
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+    try {
+      await setDoc(doc(db, COLLECTION_NAME, id), newStudent);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.CREATE, `${COLLECTION_NAME}/${id}`);
     }
 
     const students = localDB.getStudents();
@@ -133,39 +127,35 @@ export const studentService = {
   },
 
   async update(id: string, payload: Partial<CreateStudentDTO>): Promise<Student> {
-    if (isSupabaseConfigured && supabase) {
-      const { data, error } = await supabase
-        .from('students')
-        .update({
-          ...payload,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', id)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    }
-
     const students = localDB.getStudents();
     const idx = students.findIndex((s) => s.id === id);
     if (idx === -1) throw new Error('Aluno não encontrado');
 
-    const updated = {
+    const updated: Student = {
       ...students[idx],
       ...payload,
       updated_at: new Date().toISOString(),
     };
+
+    try {
+      await updateDoc(doc(db, COLLECTION_NAME, id), {
+        ...payload,
+        updated_at: new Date().toISOString(),
+      });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `${COLLECTION_NAME}/${id}`);
+    }
+
     students[idx] = updated;
     localDB.saveStudents(students);
     return updated;
   },
 
   async delete(id: string): Promise<void> {
-    if (isSupabaseConfigured && supabase) {
-      const { error } = await supabase.from('students').delete().eq('id', id);
-      if (error) throw error;
-      return;
+    try {
+      await deleteDoc(doc(db, COLLECTION_NAME, id));
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, `${COLLECTION_NAME}/${id}`);
     }
 
     const students = localDB.getStudents().filter((s) => s.id !== id);
@@ -195,5 +185,5 @@ export const studentService = {
     }
 
     return { insertedCount, errors };
-  }
+  },
 };

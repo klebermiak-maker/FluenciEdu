@@ -1,5 +1,7 @@
 import { School } from '../types/database';
-import { supabase, isSupabaseConfigured, localDB } from './supabase';
+import { db, handleFirestoreError, OperationType, seedFirestoreIfEmpty } from './firebase';
+import { collection, getDocs, doc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { localDB } from './supabase';
 
 export interface CreateSchoolDTO {
   nome: string;
@@ -10,36 +12,39 @@ export interface CreateSchoolDTO {
   email: string;
 }
 
+const COLLECTION_NAME = 'schools';
+
 export const schoolService = {
   async list(): Promise<School[]> {
-    if (isSupabaseConfigured && supabase) {
-      const { data, error } = await supabase
-        .from('schools')
-        .select('*')
-        .order('nome', { ascending: true });
-      if (error) throw error;
-      return data || [];
+    try {
+      const snap = await getDocs(collection(db, COLLECTION_NAME));
+      if (!snap.empty) {
+        const schools = snap.docs.map((d) => d.data() as School);
+        // Sync local cache
+        localDB.saveSchools(schools);
+        return schools.sort((a, b) => a.nome.localeCompare(b.nome));
+      } else {
+        const defaults = localDB.getSchools();
+        const classesDef = localDB.getClasses();
+        const studentsDef = localDB.getStudents();
+        await seedFirestoreIfEmpty(defaults, classesDef, studentsDef);
+        return defaults.sort((a, b) => a.nome.localeCompare(b.nome));
+      }
+    } catch (err) {
+      console.warn('Carregando escolas do cache local devido ao Firestore:', err);
     }
     return localDB.getSchools().sort((a, b) => a.nome.localeCompare(b.nome));
   },
 
   async getById(id: string): Promise<School | null> {
-    if (isSupabaseConfigured && supabase) {
-      const { data, error } = await supabase
-        .from('schools')
-        .select('*')
-        .eq('id', id)
-        .single();
-      if (error) return null;
-      return data;
-    }
-    const schools = localDB.getSchools();
+    const schools = await this.list();
     return schools.find((s) => s.id === id) || null;
   },
 
   async create(payload: CreateSchoolDTO): Promise<School> {
+    const id = `school-${Date.now()}`;
     const newSchool: School = {
-      id: isSupabaseConfigured ? undefined as unknown as string : `school-${Date.now()}`,
+      id,
       nome: payload.nome.trim(),
       municipio: payload.municipio.trim(),
       estado: payload.estado.trim().toUpperCase(),
@@ -49,21 +54,10 @@ export const schoolService = {
       created_at: new Date().toISOString(),
     };
 
-    if (isSupabaseConfigured && supabase) {
-      const { data, error } = await supabase
-        .from('schools')
-        .insert([{
-          nome: newSchool.nome,
-          municipio: newSchool.municipio,
-          estado: newSchool.estado,
-          codigo: newSchool.codigo,
-          responsavel: newSchool.responsavel,
-          email: newSchool.email
-        }])
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+    try {
+      await setDoc(doc(db, COLLECTION_NAME, id), newSchool);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.CREATE, `${COLLECTION_NAME}/${id}`);
     }
 
     const schools = localDB.getSchools();
@@ -73,42 +67,35 @@ export const schoolService = {
   },
 
   async update(id: string, payload: Partial<CreateSchoolDTO>): Promise<School> {
-    if (isSupabaseConfigured && supabase) {
-      const { data, error } = await supabase
-        .from('schools')
-        .update({
-          ...payload,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    }
-
     const schools = localDB.getSchools();
     const index = schools.findIndex((s) => s.id === id);
     if (index === -1) throw new Error('Escola não encontrada');
 
-    const updated = {
+    const updated: School = {
       ...schools[index],
       ...payload,
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
     };
+
+    try {
+      await updateDoc(doc(db, COLLECTION_NAME, id), {
+        ...payload,
+        updated_at: new Date().toISOString(),
+      });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `${COLLECTION_NAME}/${id}`);
+    }
+
     schools[index] = updated;
     localDB.saveSchools(schools);
     return updated;
   },
 
   async delete(id: string): Promise<void> {
-    if (isSupabaseConfigured && supabase) {
-      const { error } = await supabase
-        .from('schools')
-        .delete()
-        .eq('id', id);
-      if (error) throw error;
-      return;
+    try {
+      await deleteDoc(doc(db, COLLECTION_NAME, id));
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, `${COLLECTION_NAME}/${id}`);
     }
 
     // Cascade delete local classes and students
@@ -120,5 +107,5 @@ export const schoolService = {
 
     const students = localDB.getStudents().filter((st) => st.escola_id !== id);
     localDB.saveStudents(students);
-  }
+  },
 };

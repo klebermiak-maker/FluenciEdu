@@ -1,0 +1,74 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128;
+    }
+
+    function isValidSchool(data) {
+      return data.nome is string && data.nome.size() >= 2 && data.nome.size() <= 200
+        && data.municipio is string && data.municipio.size() >= 2 && data.municipio.size() <= 100
+        && data.estado is string && data.estado.size() == 2;
+    }
+
+    function isValidClass(data) {
+      return data.nome is string && data.nome.size() >= 2 && data.nome.size() <= 100
+        && data.ano_serie is string && data.ano_serie.size() >= 2 && data.ano_serie.size() <= 50
+        && data.turno is string && data.turno.size() >= 2 && data.turno.size() <= 50
+        && data.escola_id is string && isValidId(data.escola_id)
+        && data.ano_letivo is number && data.ano_letivo >= 2000 && data.ano_letivo <= 2100;
+    }
+
+    function isValidStudent(data) {
+      return data.nome is string && data.nome.size() >= 2 && data.nome.size() <= 200
+        && data.matricula is string && data.matricula.size() >= 1 && data.matricula.size() <= 100
+        && data.data_nascimento is string && data.data_nascimento.size() >= 8 && data.data_nascimento.size() <= 20
+        && data.turma_id is string && isValidId(data.turma_id)
+        && data.escola_id is string && isValidId(data.escola_id);
+    }
+
+    function isValidProfile(data) {
+      return data.nome is string && data.nome.size() >= 2 && data.nome.size() <= 200
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 200
+        && data.role in ['admin', 'gestor', 'professor'];
+    }
+
+    // Schools collection
+    match /schools/{schoolId} {
+      allow read: if true;
+      allow create, update: if isSignedIn() && isValidId(schoolId) && isValidSchool(request.resource.data);
+      allow delete: if isSignedIn() && isValidId(schoolId);
+    }
+
+    // Classes collection
+    match /classes/{classId} {
+      allow read: if true;
+      allow create, update: if isSignedIn() && isValidId(classId) && isValidClass(request.resource.data);
+      allow delete: if isSignedIn() && isValidId(classId);
+    }
+
+    // Students collection
+    match /students/{studentId} {
+      allow read: if true;
+      allow create, update: if isSignedIn() && isValidId(studentId) && isValidStudent(request.resource.data);
+      allow delete: if isSignedIn() && isValidId(studentId);
+    }
+
+    // Profiles collection
+    match /profiles/{profileId} {
+      allow read: if true;
+      allow create, update: if isSignedIn() && isValidId(profileId) && isValidProfile(request.resource.data);
+      allow delete: if isSignedIn() && isValidId(profileId);
+    }
+  }
+}

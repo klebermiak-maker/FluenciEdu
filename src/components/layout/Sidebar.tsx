@@ -241,18 +241,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="px-4 py-2 border-t border-slate-100 bg-slate-50/70 text-xs">
           <div className="flex items-center justify-between text-slate-500">
             <span className="flex items-center gap-1.5 font-medium">
-              <Database className="w-3.5 h-3.5 text-slate-400" />
-              Banco PostgreSQL:
+              <Database className="w-3.5 h-3.5 text-amber-500" />
+              Banco em Nuvem:
             </span>
-            {isSupabaseConfigured ? (
-              <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Supabase
-              </span>
-            ) : (
-              <span className="flex items-center gap-1 text-[11px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200" title="Persistência local ativa">
-                <CheckCircle2 className="w-3 h-3 text-blue-600" /> Local Persistente
-              </span>
-            )}
+            <span className="flex items-center gap-1 text-[11px] font-semibold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+              <CheckCircle2 className="w-3 h-3 text-amber-600" /> Firebase Firestore
+            </span>
           </div>
         </div>
 

@@ -1,0 +1,84 @@
+{
+  "entities": {
+    "School": {
+      "title": "School",
+      "description": "Unidade escolar cadastrada no município de Itaúba - MT",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "nome": { "type": "string" },
+        "municipio": { "type": "string" },
+        "estado": { "type": "string" },
+        "codigo": { "type": "string" },
+        "responsavel": { "type": "string" },
+        "email": { "type": "string" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["nome", "municipio", "estado"]
+    },
+    "ClassRoom": {
+      "title": "ClassRoom",
+      "description": "Turma ou sala de aula de ensino fundamental",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "nome": { "type": "string" },
+        "ano_serie": { "type": "string" },
+        "turno": { "type": "string" },
+        "professor_id": { "type": "string" },
+        "escola_id": { "type": "string" },
+        "ano_letivo": { "type": "number" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["nome", "ano_serie", "turno", "escola_id", "ano_letivo"]
+    },
+    "Student": {
+      "title": "Student",
+      "description": "Estudante dos anos iniciais do ensino fundamental",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "nome": { "type": "string" },
+        "matricula": { "type": "string" },
+        "data_nascimento": { "type": "string" },
+        "turma_id": { "type": "string" },
+        "escola_id": { "type": "string" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["nome", "matricula", "data_nascimento", "turma_id", "escola_id"]
+    },
+    "Profile": {
+      "title": "Profile",
+      "description": "Perfil de usuário educador ou gestor municipal",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "nome": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "gestor", "professor"] },
+        "escola_id": { "type": "string" },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["nome", "email", "role"]
+    }
+  },
+  "firestore": {
+    "/schools/{schoolId}": {
+      "schema": "School",
+      "description": "Coleção de escolas municipais"
+    },
+    "/classes/{classId}": {
+      "schema": "ClassRoom",
+      "description": "Coleção de turmas escolares"
+    },
+    "/students/{studentId}": {
+      "schema": "Student",
+      "description": "Coleção de alunos cadastrados"
+    },
+    "/profiles/{profileId}": {
+      "schema": "Profile",
+      "description": "Perfis de usuários do sistema"
+    }
+  }
+}
