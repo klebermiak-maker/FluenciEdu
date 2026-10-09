@@ -1,0 +1,6 @@
+{
+  "name": "FluenciEdu - Avaliação de Fluência Leitora",
+  "description": "Sistema de gestão e avaliação de fluência leitora para alunos dos anos iniciais do Ensino Fundamental.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

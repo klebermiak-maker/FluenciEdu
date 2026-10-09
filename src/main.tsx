@@ -1,0 +1,14 @@
+import {StrictMode} from 'react';
+import {createRoot} from 'react-dom/client';
+import App from './App.tsx';
+import './index.css';
+import { registerServiceWorker } from './serviceWorkerRegistration';
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+);
+
+// Ativar suporte a PWA e visualização offline
+registerServiceWorker();
