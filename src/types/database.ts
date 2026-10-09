@@ -48,21 +48,44 @@ export interface Student {
 }
 
 export type AssessmentStatus = 'pendente' | 'em_andamento' | 'concluida' | 'analisada';
+export type ReadingMaterialType = 'palavras' | 'pseudopalavras' | 'texto_curto';
+export type AssessmentMode = 'livre' | '60_segundos';
+export type AssessmentAudioStorageStatus = 'salvo' | 'pendente_upload' | 'falha';
+
+export interface ReadingMaterial {
+  id: string;
+  titulo: string;
+  tipo: ReadingMaterialType;
+  ano_escolar: string;
+  conteudo: string;
+  descricao?: string;
+  is_exemplo?: boolean;
+  created_at: string;
+  updated_at?: string;
+}
 
 export interface Assessment {
   id: string;
-  student_id: string;
-  turma_id: string;
   escola_id: string;
-  evaluator_id?: string | null;
-  status: AssessmentStatus;
-  audio_path?: string | null;
-  duracao_segundos?: number | null;
-  palavras_por_minuto?: number | null;
-  precisao_leitura?: number | null;
-  nivel_fluencia?: string | null;
-  transcricao?: string | null;
+  professor_id: string;
+  professor_nome: string;
+  turma_id: string;
+  student_id: string; // compatibility
+  aluno_id: string;
+  material_id: string;
+  material_titulo: string;
+  material_tipo: ReadingMaterialType;
+  material_conteudo_snapshot: string;
+  modalidade: AssessmentMode;
+  data_inicio: string; // UTC ISO string
+  duracao_segundos: number; // Real effective duration
+  audio_url: string; // Playable URL (blob, signed, or storage)
+  audio_storage_path: string; // Unique file path in storage
+  audio_mime_type: string;
+  audio_size_bytes: number;
   observacoes?: string | null;
+  status_armazenamento: AssessmentAudioStorageStatus;
+  status: AssessmentStatus;
   created_at: string;
   updated_at?: string;
 }
@@ -84,6 +107,7 @@ export type NavigationPage =
   | 'schools'
   | 'classes'
   | 'students'
+  | 'materials'
   | 'import'
   | 'assessments'
   | 'reports'

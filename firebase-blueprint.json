@@ -61,6 +61,50 @@
         "updated_at": { "type": "string" }
       },
       "required": ["nome", "email", "role"]
+    },
+    "ReadingMaterial": {
+      "title": "ReadingMaterial",
+      "description": "Material de leitura para avaliação de fluência leitora",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "titulo": { "type": "string" },
+        "tipo": { "type": "string", "enum": ["palavras", "pseudopalavras", "texto_curto"] },
+        "ano_escolar": { "type": "string" },
+        "conteudo": { "type": "string" },
+        "descricao": { "type": "string" },
+        "is_exemplo": { "type": "boolean" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["titulo", "tipo", "ano_escolar", "conteudo"]
+    },
+    "Assessment": {
+      "title": "Assessment",
+      "description": "Registro de avaliação de gravação de leitura do estudante",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "escola_id": { "type": "string" },
+        "professor_id": { "type": "string" },
+        "professor_nome": { "type": "string" },
+        "turma_id": { "type": "string" },
+        "aluno_id": { "type": "string" },
+        "material_id": { "type": "string" },
+        "material_titulo": { "type": "string" },
+        "material_tipo": { "type": "string", "enum": ["palavras", "pseudopalavras", "texto_curto"] },
+        "material_conteudo_snapshot": { "type": "string" },
+        "modalidade": { "type": "string", "enum": ["livre", "60_segundos"] },
+        "data_inicio": { "type": "string" },
+        "duracao_segundos": { "type": "number" },
+        "audio_url": { "type": "string" },
+        "audio_storage_path": { "type": "string" },
+        "audio_mime_type": { "type": "string" },
+        "audio_size_bytes": { "type": "number" },
+        "observacoes": { "type": "string" },
+        "status_armazenamento": { "type": "string" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["escola_id", "turma_id", "aluno_id", "material_id", "material_conteudo_snapshot", "modalidade", "duracao_segundos"]
     }
   },
   "firestore": {
@@ -79,6 +123,14 @@
     "/profiles/{profileId}": {
       "schema": "Profile",
       "description": "Perfis de usuários do sistema"
+    },
+    "/reading_materials/{materialId}": {
+      "schema": "ReadingMaterial",
+      "description": "Materiais de leitura cadastrados"
+    },
+    "/assessments/{assessmentId}": {
+      "schema": "Assessment",
+      "description": "Gravações e avaliações de fluência leitora"
     }
   }
 }

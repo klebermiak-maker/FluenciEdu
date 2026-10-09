@@ -15,27 +15,31 @@ import {
   TrendingUp,
   School as SchoolIcon
 } from 'lucide-react';
-import { School, ClassRoom, Student, NavigationPage } from '../../types/database';
+import { School, ClassRoom, Student, NavigationPage, Assessment } from '../../types/database';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface DashboardPageProps {
   schools: School[];
   classes: ClassRoom[];
   students: Student[];
+  assessments?: Assessment[];
   onNavigate: (page: NavigationPage) => void;
   onOpenCreateSchool: () => void;
   onOpenCreateClass: () => void;
   onOpenCreateStudent: () => void;
+  onOpenNewAssessment?: () => void;
 }
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({
   schools,
   classes,
   students,
+  assessments = [],
   onNavigate,
   onOpenCreateSchool,
   onOpenCreateClass,
   onOpenCreateStudent,
+  onOpenNewAssessment,
 }) => {
   const { profile } = useAuth();
 
@@ -43,7 +47,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const totalSchools = schools.length;
   const totalClasses = classes.length;
   const totalStudents = students.length;
-  const totalAssessments = 0; // Preparado para a Fase 2
+  const totalAssessments = assessments.length;
 
   // Students per class computation
   const classStudentCounts = classes.map((c) => {
@@ -180,18 +184,18 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
               Avaliações Realizadas
             </span>
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-amber-700 group-hover:scale-110 transition-transform">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 group-hover:scale-110 transition-transform">
               <Mic className="h-6 w-6" />
             </div>
           </div>
           <div className="mt-4 flex items-baseline gap-2">
             <span className="text-3xl font-extrabold text-slate-900">{totalAssessments}</span>
-            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
-              Fase 2
+            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+              Fase 2 Ativa
             </span>
           </div>
-          <div className="mt-3 flex items-center text-xs font-semibold text-amber-600 group-hover:translate-x-1 transition-transform">
-            <span>Módulo em preparação</span>
+          <div className="mt-3 flex items-center text-xs font-semibold text-emerald-600 group-hover:translate-x-1 transition-transform">
+            <span>Acessar avaliações de leitura</span>
             <ArrowRight className="w-3.5 h-3.5 ml-1" />
           </div>
         </div>

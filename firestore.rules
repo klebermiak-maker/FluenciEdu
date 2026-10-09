@@ -43,6 +43,23 @@ service cloud.firestore {
         && data.role in ['admin', 'gestor', 'professor'];
     }
 
+    function isValidMaterial(data) {
+      return data.titulo is string && data.titulo.size() >= 2 && data.titulo.size() <= 200
+        && data.tipo in ['palavras', 'pseudopalavras', 'texto_curto']
+        && data.ano_escolar is string && data.ano_escolar.size() >= 2 && data.ano_escolar.size() <= 50
+        && data.conteudo is string && data.conteudo.size() >= 2 && data.conteudo.size() <= 50000;
+    }
+
+    function isValidAssessment(data) {
+      return data.escola_id is string && isValidId(data.escola_id)
+        && data.turma_id is string && isValidId(data.turma_id)
+        && data.aluno_id is string && isValidId(data.aluno_id)
+        && data.material_id is string && isValidId(data.material_id)
+        && data.material_tipo in ['palavras', 'pseudopalavras', 'texto_curto']
+        && data.modalidade in ['livre', '60_segundos']
+        && data.duracao_segundos is number && data.duracao_segundos >= 0;
+    }
+
     // Schools collection
     match /schools/{schoolId} {
       allow read: if true;
@@ -69,6 +86,20 @@ service cloud.firestore {
       allow read: if true;
       allow create, update: if isSignedIn() && isValidId(profileId) && isValidProfile(request.resource.data);
       allow delete: if isSignedIn() && isValidId(profileId);
+    }
+
+    // Reading materials collection
+    match /reading_materials/{materialId} {
+      allow read: if true;
+      allow create, update: if isSignedIn() && isValidId(materialId) && isValidMaterial(request.resource.data);
+      allow delete: if isSignedIn() && isValidId(materialId);
+    }
+
+    // Assessments collection
+    match /assessments/{assessmentId} {
+      allow read: if true;
+      allow create, update: if isSignedIn() && isValidId(assessmentId) && isValidAssessment(request.resource.data);
+      allow delete: if isSignedIn() && isValidId(assessmentId);
     }
   }
 }

@@ -27,13 +27,17 @@ const PAGE_TITLES: Record<NavigationPage, { title: string; subtitle: string }> =
     title: 'Cadastro de Alunos',
     subtitle: 'Lista de estudantes dos anos iniciais do Ensino Fundamental',
   },
+  materials: {
+    title: 'Materiais de Leitura',
+    subtitle: 'Palavras, pseudopalavras e textos curtos para prática e avaliação',
+  },
   import: {
     title: 'Importação em Lote via CSV',
     subtitle: 'Carregamento rápido de estudantes com validação automática',
   },
   assessments: {
     title: 'Avaliações de Fluência Leitora',
-    subtitle: 'Módulo de gravação de áudio e análise (Fase 2)',
+    subtitle: 'Gravação e armazenamento de áudio de leitura dos alunos (Fase 2)',
   },
   reports: {
     title: 'Relatórios & Diagnósticos',

@@ -6,16 +6,27 @@ import { DashboardPage } from './components/pages/DashboardPage';
 import { SchoolsPage } from './components/pages/SchoolsPage';
 import { ClassesPage } from './components/pages/ClassesPage';
 import { StudentsPage } from './components/pages/StudentsPage';
+import { ReadingMaterialsPage } from './components/pages/ReadingMaterialsPage';
+import { AssessmentsPage } from './components/pages/AssessmentsPage';
 import { ImportStudentsPage } from './components/pages/ImportStudentsPage';
-import { AssessmentsPlaceholderPage } from './components/pages/AssessmentsPlaceholderPage';
 import { ReportsPlaceholderPage } from './components/pages/ReportsPlaceholderPage';
 import { ProfilePage } from './components/pages/ProfilePage';
 import { AuthPages } from './components/pages/AuthPages';
+import { NewAssessmentFlowModal } from './components/assessments/NewAssessmentFlowModal';
 
-import { School, ClassRoom, Student, NavigationPage } from './types/database';
+import { 
+  School, 
+  ClassRoom, 
+  Student, 
+  NavigationPage, 
+  ReadingMaterial, 
+  Assessment 
+} from './types/database';
 import { schoolService, CreateSchoolDTO } from './services/schoolService';
 import { classService, CreateClassDTO } from './services/classService';
 import { studentService, CreateStudentDTO } from './services/studentService';
+import { materialService, CreateMaterialDTO } from './services/materialService';
+import { assessmentService, CreateAssessmentPayload } from './services/assessmentService';
 
 function MainApp() {
   const { session, isLoading: authLoading, profile } = useAuth();
@@ -25,6 +36,8 @@ function MainApp() {
   const [schools, setSchools] = useState<School[]>([]);
   const [classes, setClasses] = useState<ClassRoom[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
+  const [materials, setMaterials] = useState<ReadingMaterial[]>([]);
+  const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
 
   // Modal triggers from different pages
@@ -32,18 +45,28 @@ function MainApp() {
   const [isClassModalOpen, setIsClassModalOpen] = useState(false);
   const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
 
+  // Assessment recording flow modal
+  const [isNewAssessmentFlowOpen, setIsNewAssessmentFlowOpen] = useState(false);
+  const [preselectedClassId, setPreselectedClassId] = useState<string>('');
+  const [preselectedStudentId, setPreselectedStudentId] = useState<string>('');
+  const [preselectedMaterialId, setPreselectedMaterialId] = useState<string>('');
+
   // Load all initial entities
   const loadAllData = useCallback(async () => {
     setIsLoadingData(true);
     try {
-      const [schoolsData, classesData, studentsData] = await Promise.all([
+      const [schoolsData, classesData, studentsData, materialsData, assessmentsData] = await Promise.all([
         schoolService.list(),
         classService.list(),
         studentService.list(),
+        materialService.list(),
+        assessmentService.list(),
       ]);
       setSchools(schoolsData);
       setClasses(classesData);
       setStudents(studentsData);
+      setMaterials(materialsData);
+      setAssessments(assessmentsData);
     } catch (err) {
       console.error('Erro ao carregar dados:', err);
       addToast('Erro ao carregar dados', 'Verifique sua conexão.', 'error');
@@ -164,12 +187,74 @@ function MainApp() {
     try {
       await studentService.delete(id);
       setStudents((prev) => prev.filter((s) => s.id !== id));
+      setAssessments((prev) => prev.filter((a) => a.aluno_id !== id && a.student_id !== id));
       addToast('Aluno excluído', 'O registro do aluno foi removido.', 'info');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao excluir aluno.';
       addToast('Erro ao excluir', msg, 'error');
       throw err;
     }
+  };
+
+  // Material handlers
+  const handleCreateMaterial = async (payload: CreateMaterialDTO) => {
+    try {
+      const created = await materialService.create(payload);
+      setMaterials((prev) => [...prev, created].sort((a, b) => a.titulo.localeCompare(b.titulo)));
+      addToast('Material cadastrado!', `"${created.titulo}" foi adicionado com sucesso.`, 'success');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro ao cadastrar material.';
+      addToast('Erro no cadastro', msg, 'error');
+      throw err;
+    }
+  };
+
+  const handleUpdateMaterial = async (id: string, payload: Partial<CreateMaterialDTO>) => {
+    try {
+      const updated = await materialService.update(id, payload);
+      setMaterials((prev) => prev.map((m) => (m.id === id ? updated : m)));
+      addToast('Material atualizado!', 'Alterações salvas com sucesso.', 'success');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro ao atualizar material.';
+      addToast('Erro ao salvar', msg, 'error');
+      throw err;
+    }
+  };
+
+  const handleDeleteMaterial = async (id: string) => {
+    try {
+      await materialService.delete(id);
+      setMaterials((prev) => prev.filter((m) => m.id !== id));
+      addToast('Material excluído', 'O material foi removido do catálogo.', 'info');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro ao excluir material.';
+      addToast('Erro ao excluir', msg, 'error');
+      throw err;
+    }
+  };
+
+  // Assessment handlers (Phase 2)
+  const handleSaveAssessment = async (payload: CreateAssessmentPayload, audioBlob: Blob) => {
+    const created = await assessmentService.create(payload, audioBlob);
+    setAssessments((prev) => [created, ...prev]);
+  };
+
+  const handleDeleteAssessment = async (id: string) => {
+    await assessmentService.delete(id);
+    setAssessments((prev) => prev.filter((a) => a.id !== id));
+  };
+
+  const handleUpdateAssessmentNotes = async (id: string, notes: string) => {
+    const updated = await assessmentService.updateNotes(id, notes);
+    setAssessments((prev) => prev.map((a) => (a.id === id ? updated : a)));
+  };
+
+  // Triggering new assessment flow with presets
+  const handleOpenNewAssessment = (studentId?: string, classId?: string, materialId?: string) => {
+    setPreselectedStudentId(studentId || '');
+    setPreselectedClassId(classId || '');
+    setPreselectedMaterialId(materialId || '');
+    setIsNewAssessmentFlowOpen(true);
   };
 
   // CSV Batch Import
@@ -217,6 +302,7 @@ function MainApp() {
           schools={schools}
           classes={classes}
           students={students}
+          assessments={assessments}
           onNavigate={setCurrentPage}
           onOpenCreateSchool={() => {
             setCurrentPage('schools');
@@ -230,6 +316,7 @@ function MainApp() {
             setCurrentPage('students');
             setIsStudentModalOpen(true);
           }}
+          onOpenNewAssessment={() => handleOpenNewAssessment()}
         />
       )}
 
@@ -256,6 +343,10 @@ function MainApp() {
           onDeleteClass={handleDeleteClass}
           isCreateModalOpen={isClassModalOpen}
           setIsCreateModalOpen={setIsClassModalOpen}
+          onOpenCreateStudentForClass={(classId) => {
+            setCurrentPage('students');
+            setIsStudentModalOpen(true);
+          }}
         />
       )}
 
@@ -264,12 +355,38 @@ function MainApp() {
           students={students}
           schools={schools}
           classes={classes}
+          assessments={assessments}
           onCreateStudent={handleCreateStudent}
           onUpdateStudent={handleUpdateStudent}
           onDeleteStudent={handleDeleteStudent}
           isCreateModalOpen={isStudentModalOpen}
           setIsCreateModalOpen={setIsStudentModalOpen}
           onNavigateToImport={() => setCurrentPage('import')}
+          onOpenNewAssessmentForStudent={(studentId, classId) => handleOpenNewAssessment(studentId, classId)}
+          onDeleteAssessment={handleDeleteAssessment}
+        />
+      )}
+
+      {currentPage === 'materials' && (
+        <ReadingMaterialsPage
+          materials={materials}
+          onCreateMaterial={handleCreateMaterial}
+          onUpdateMaterial={handleUpdateMaterial}
+          onDeleteMaterial={handleDeleteMaterial}
+          onStartAssessmentWithMaterial={(matId) => handleOpenNewAssessment(undefined, undefined, matId)}
+        />
+      )}
+
+      {currentPage === 'assessments' && (
+        <AssessmentsPage
+          assessments={assessments}
+          students={students}
+          classes={classes}
+          schools={schools}
+          materials={materials}
+          onOpenNewAssessment={() => handleOpenNewAssessment()}
+          onDeleteAssessment={handleDeleteAssessment}
+          onUpdateNotes={handleUpdateAssessmentNotes}
         />
       )}
 
@@ -283,10 +400,6 @@ function MainApp() {
         />
       )}
 
-      {currentPage === 'assessments' && (
-        <AssessmentsPlaceholderPage onNavigate={setCurrentPage} />
-      )}
-
       {currentPage === 'reports' && (
         <ReportsPlaceholderPage onNavigate={setCurrentPage} />
       )}
@@ -294,6 +407,23 @@ function MainApp() {
       {currentPage === 'profile' && (
         <ProfilePage schools={schools} onRefreshData={loadAllData} />
       )}
+
+      {/* Modal de Fluxo de Gravação de Nova Avaliação (Fase 2) */}
+      <NewAssessmentFlowModal
+        isOpen={isNewAssessmentFlowOpen}
+        onClose={() => {
+          setIsNewAssessmentFlowOpen(false);
+          setPreselectedClassId('');
+          setPreselectedStudentId('');
+          setPreselectedMaterialId('');
+        }}
+        classes={classes}
+        students={students}
+        materials={materials}
+        preselectedClassId={preselectedClassId}
+        preselectedStudentId={preselectedStudentId}
+        onSaveAssessment={handleSaveAssessment}
+      />
     </AppLayout>
   );
 }

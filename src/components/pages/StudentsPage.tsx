@@ -13,11 +13,13 @@ import {
   ArrowUpDown, 
   X,
   Filter,
-  FileDown
+  FileDown,
+  Mic
 } from 'lucide-react';
-import { Student, School, ClassRoom } from '../../types/database';
+import { Student, School, ClassRoom, Assessment } from '../../types/database';
 import { CreateStudentDTO } from '../../services/studentService';
 import { pdfExportService } from '../../services/pdfExportService';
+import { formatDateTimeCuiaba, formatRecordingDuration, audioStorageService } from '../../services/audioStorageService';
 import { Modal } from '../common/Modal';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { EmptyState } from '../common/EmptyState';
@@ -27,26 +29,34 @@ interface StudentsPageProps {
   students: Student[];
   schools: School[];
   classes: ClassRoom[];
+  assessments?: Assessment[];
   onCreateStudent: (payload: CreateStudentDTO) => Promise<void>;
   onUpdateStudent: (id: string, payload: Partial<CreateStudentDTO>) => Promise<void>;
   onDeleteStudent: (id: string) => Promise<void>;
   isCreateModalOpen: boolean;
   setIsCreateModalOpen: (val: boolean) => void;
   onNavigateToImport: () => void;
+  onOpenNewAssessmentForStudent?: (studentId: string, classId: string) => void;
+  onDeleteAssessment?: (id: string) => Promise<void>;
 }
 
 export const StudentsPage: React.FC<StudentsPageProps> = ({
   students,
   schools,
   classes,
+  assessments = [],
   onCreateStudent,
   onUpdateStudent,
   onDeleteStudent,
   isCreateModalOpen,
   setIsCreateModalOpen,
   onNavigateToImport,
+  onOpenNewAssessmentForStudent,
+  onDeleteAssessment,
 }) => {
   const { addToast } = useToast();
+  const [viewingHistoryStudent, setViewingHistoryStudent] = useState<Student | null>(null);
+  const [deletingHistoryAssessmentId, setDeletingHistoryAssessmentId] = useState<string | null>(null);
 
   // Search & Filter State
   const [searchTerm, setSearchTerm] = useState('');
@@ -421,6 +431,17 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                         <div className="flex items-center justify-end gap-1">
                           <button
                             type="button"
+                            onClick={() => setViewingHistoryStudent(student)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-xs font-bold transition-colors"
+                            title="Ver histórico de leituras gravadas"
+                          >
+                            <Mic className="w-3.5 h-3.5" />
+                            <span>
+                              {assessments.filter((a) => a.aluno_id === student.id || a.student_id === student.id).length}
+                            </span>
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => handleOpenEdit(student)}
                             className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
                             title="Editar aluno"
@@ -570,6 +591,180 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
         title="Excluir Aluno"
         message="Tem certeza de que deseja remover este aluno? As informações associadas serão excluídas permanentemente."
         confirmLabel="Sim, Excluir Aluno"
+        isLoading={isSubmitting}
+      />
+
+      {/* Modal: Histórico de Leituras do Aluno */}
+      <Modal
+        isOpen={viewingHistoryStudent !== null}
+        onClose={() => setViewingHistoryStudent(null)}
+        title={viewingHistoryStudent ? `Histórico de Leituras — ${viewingHistoryStudent.nome}` : 'Histórico de Leituras'}
+        description="Gravações de áudio realizadas, modalidade, duração e observações pedagógicas do aluno."
+      >
+        {viewingHistoryStudent && (() => {
+          const studentAssessments = assessments.filter(
+            (a) => a.aluno_id === viewingHistoryStudent.id || a.student_id === viewingHistoryStudent.id
+          );
+          const studentClass = classes.find((c) => c.id === viewingHistoryStudent.turma_id);
+
+          return (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs">
+                <div>
+                  <span className="text-slate-500 block">Turma:</span>
+                  <strong className="text-slate-900">{studentClass?.nome || 'Não informada'} ({studentClass?.ano_serie})</strong>
+                </div>
+                <div>
+                  <span className="text-slate-500 block">Matrícula:</span>
+                  <strong className="text-slate-900">{viewingHistoryStudent.matricula}</strong>
+                </div>
+                <div>
+                  <span className="text-slate-500 block">Gravações:</span>
+                  <strong className="text-emerald-700">{studentAssessments.length} realizada(s)</strong>
+                </div>
+              </div>
+
+              {studentAssessments.length === 0 ? (
+                <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                  <Mic className="w-10 h-10 text-slate-400 mx-auto" />
+                  <div>
+                    <h5 className="font-bold text-slate-800 text-sm">Nenhuma gravação encontrada</h5>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Este aluno ainda não possui avaliações de leitura gravadas nesta etapa.
+                    </p>
+                  </div>
+                  {onOpenNewAssessmentForStudent && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const sid = viewingHistoryStudent.id;
+                        const cid = viewingHistoryStudent.turma_id;
+                        setViewingHistoryStudent(null);
+                        onOpenNewAssessmentForStudent(sid, cid);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 text-white font-bold text-xs hover:bg-blue-700 shadow-xs"
+                    >
+                      <Mic className="w-3.5 h-3.5" />
+                      <span>Gravar Primeira Leitura</span>
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+                  {studentAssessments.map((a) => (
+                    <div
+                      key={a.id}
+                      className="p-4 rounded-2xl border border-slate-200 bg-white space-y-3 shadow-2xs"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-bold text-sm text-slate-900">{a.material_titulo}</span>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                              {a.modalidade === '60_segundos' ? '60 Segundos' : 'Livre'}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-500">
+                            {formatDateTimeCuiaba(a.created_at)} • Duração da gravação: <strong className="font-mono text-slate-800">{formatRecordingDuration(a.duracao_segundos)}</strong>
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              audioStorageService.downloadAudioFile(
+                                a.id,
+                                `leitura_${viewingHistoryStudent.matricula}_${a.id.slice(0, 8)}.${a.audio_mime_type.includes('mp4') ? 'mp4' : 'webm'}`
+                              );
+                              addToast('Download iniciado', 'Baixando gravação.', 'info');
+                            }}
+                            className="p-1.5 rounded-lg text-slate-600 hover:text-blue-600 hover:bg-slate-100"
+                            title="Baixar áudio"
+                          >
+                            <FileDown className="w-4 h-4" />
+                          </button>
+                          {onDeleteAssessment && (
+                            <button
+                              type="button"
+                              onClick={() => setDeletingHistoryAssessmentId(a.id)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                              title="Excluir gravação"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Reprodutor de áudio */}
+                      {a.audio_url && (
+                        <audio
+                          controls
+                          src={a.audio_url}
+                          className="w-full h-9 rounded-lg"
+                          preload="none"
+                        />
+                      )}
+
+                      {/* Observações */}
+                      {a.observacoes && (
+                        <p className="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-100 italic">
+                          "{a.observacoes}"
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="pt-3 border-t border-slate-200 flex justify-between items-center">
+                {onOpenNewAssessmentForStudent && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const sid = viewingHistoryStudent.id;
+                      const cid = viewingHistoryStudent.turma_id;
+                      setViewingHistoryStudent(null);
+                      onOpenNewAssessmentForStudent(sid, cid);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 shadow-xs"
+                  >
+                    <Mic className="w-3.5 h-3.5" />
+                    <span>Nova Leitura para este Aluno</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setViewingHistoryStudent(null)}
+                  className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-semibold hover:bg-slate-200 ml-auto"
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+      </Modal>
+
+      {/* Modal: Confirmar Exclusão de Gravação do Histórico */}
+      <ConfirmModal
+        isOpen={Boolean(deletingHistoryAssessmentId)}
+        onClose={() => setDeletingHistoryAssessmentId(null)}
+        onConfirm={async () => {
+          if (!deletingHistoryAssessmentId || !onDeleteAssessment) return;
+          setIsSubmitting(true);
+          try {
+            await onDeleteAssessment(deletingHistoryAssessmentId);
+            addToast('Gravação removida', 'A gravação foi excluída com sucesso.', 'success');
+            setDeletingHistoryAssessmentId(null);
+          } finally {
+            setIsSubmitting(false);
+          }
+        }}
+        title="Excluir Gravação de Leitura"
+        message="Deseja realmente remover esta gravação de leitura? O arquivo de áudio e os registros serão excluídos permanentemente."
+        confirmLabel="Sim, Excluir Gravação"
         isLoading={isSubmitting}
       />
     </div>

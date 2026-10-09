@@ -11,6 +11,7 @@ import {
   LogOut, 
   X, 
   BookOpen,
+  FileText,
   Sparkles,
   Database,
   CheckCircle2,
@@ -41,15 +42,15 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'schools', label: 'Escolas', icon: Building2 },
   { id: 'classes', label: 'Turmas', icon: GraduationCap },
   { id: 'students', label: 'Alunos', icon: Users },
-  { id: 'import', label: 'Importar Alunos', icon: FileSpreadsheet },
+  { id: 'materials', label: 'Materiais de Leitura', icon: FileText },
   { 
     id: 'assessments', 
     label: 'Avaliações', 
-    icon: Mic, 
-    badge: 'Fase 2', 
-    badgeColor: 'bg-amber-100 text-amber-800 border-amber-200',
-    isUpcoming: true 
+    icon: Mic,
+    badge: 'Gravação',
+    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200',
   },
+  { id: 'import', label: 'Importar Alunos', icon: FileSpreadsheet },
   { 
     id: 'reports', 
     label: 'Relatórios', 
