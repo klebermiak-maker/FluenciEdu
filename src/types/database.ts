@@ -52,6 +52,63 @@ export type ReadingMaterialType = 'palavras' | 'pseudopalavras' | 'texto_curto';
 export type AssessmentMode = 'livre' | '60_segundos';
 export type AssessmentAudioStorageStatus = 'salvo' | 'pendente_upload' | 'falha';
 
+export type WordMarkingType = 'correta' | 'substituida' | 'omitida' | 'incorreta' | 'pendente';
+export type ComplementaryOccurrence = 'autocorrecao' | 'repeticao' | 'insercao';
+export type ProsodyScore = 0 | 1 | 2 | 3; // 0 = Não avaliado, 1 = Apoio frequente, 2 = Em desenvolvimento, 3 = Consistente
+export type CorrectionStatus = 'nao_avaliada' | 'em_correcao' | 'revisada';
+
+export interface WordEvaluation {
+  id: string; // unique per word instance
+  index: number;
+  palavra_original: string;
+  pontuacao_anexa?: string;
+  status: WordMarkingType;
+  palavra_lida?: string;
+  ocorrencias: ComplementaryOccurrence[];
+  nao_alcancada?: boolean;
+}
+
+export interface ProsodyRubric {
+  pontuacao_pausas: ProsodyScore;
+  entonacao: ProsodyScore;
+  ritmo_continuidade: ProsodyScore;
+  agrupamento_sentido: ProsodyScore;
+  comentarios?: string;
+}
+
+export interface EvaluationDetails {
+  id: string;
+  assessment_id: string;
+  estado_correcao: CorrectionStatus;
+  protocolo_versao: string;
+  segmentacao_versao: string;
+  tempo_inicio_segundos: number;
+  tempo_fim_segundos: number;
+  tempo_avaliado_segundos: number;
+  ultima_palavra_alcancada_index: number;
+  palavras_marcadas: WordEvaluation[];
+  total_palavras_trecho: number; // N
+  total_corretas: number; // C
+  total_erros: number; // Substituídas + Omitidas + Incorretas
+  total_substituicoes: number;
+  total_omissoes: number;
+  total_incorretas: number;
+  total_autocorrecoes: number;
+  total_repeticoes: number;
+  total_insercoes: number;
+  pcpm: number; // (C * 60) / T
+  precisao_percentual: number; // (C / N) * 100
+  rubrica_prosodia?: ProsodyRubric;
+  observacoes_professor?: string;
+  encaminhamentos_pedagogicos?: string;
+  sugestao_transcricao_ia?: string;
+  professor_revisor_id: string;
+  professor_revisor_nome: string;
+  data_revisao?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface ReadingMaterial {
   id: string;
   titulo: string;
@@ -86,6 +143,7 @@ export interface Assessment {
   observacoes?: string | null;
   status_armazenamento: AssessmentAudioStorageStatus;
   status: AssessmentStatus;
+  avaliacao_detalhes?: EvaluationDetails;
   created_at: string;
   updated_at?: string;
 }

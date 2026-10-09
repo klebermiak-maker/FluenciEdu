@@ -19,10 +19,12 @@ import {
   FileDown,
   CheckCircle2,
   Info,
-  Edit2
+  Edit2,
+  Sparkles
 } from 'lucide-react';
 import { Assessment, Student, ClassRoom, ReadingMaterial, School } from '../../types/database';
 import { formatDateTimeCuiaba, formatRecordingDuration, audioStorageService } from '../../services/audioStorageService';
+import { pdfExportService } from '../../services/pdfExportService';
 import { Modal } from '../common/Modal';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { EmptyState } from '../common/EmptyState';
@@ -37,6 +39,7 @@ interface AssessmentsPageProps {
   onOpenNewAssessment: () => void;
   onDeleteAssessment: (id: string) => Promise<void>;
   onUpdateNotes: (id: string, notes: string) => Promise<void>;
+  onOpenCorrection?: (assessment: Assessment) => void;
 }
 
 export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({
@@ -48,6 +51,7 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({
   onOpenNewAssessment,
   onDeleteAssessment,
   onUpdateNotes,
+  onOpenCorrection,
 }) => {
   const { addToast } = useToast();
 
@@ -55,6 +59,7 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClassFilter, setSelectedClassFilter] = useState<string>('all');
   const [selectedMaterialTypeFilter, setSelectedMaterialTypeFilter] = useState<string>('all');
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('all');
   const [selectedStudentFilter, setSelectedStudentFilter] = useState<string>('all');
   const [startDateFilter, setStartDateFilter] = useState<string>('');
   const [endDateFilter, setEndDateFilter] = useState<string>('');
@@ -83,6 +88,9 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({
     const matchesType = selectedMaterialTypeFilter === 'all' || a.material_tipo === selectedMaterialTypeFilter;
     const matchesStudent = selectedStudentFilter === 'all' || a.aluno_id === selectedStudentFilter || a.student_id === selectedStudentFilter;
 
+    const evalStatus = a.avaliacao_detalhes?.estado_correcao || 'nao_avaliada';
+    const matchesStatus = selectedStatusFilter === 'all' || evalStatus === selectedStatusFilter;
+
     let matchesDate = true;
     if (startDateFilter) {
       matchesDate = matchesDate && new Date(a.created_at).getTime() >= new Date(startDateFilter).getTime();
@@ -91,7 +99,7 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({
       matchesDate = matchesDate && new Date(a.created_at).getTime() <= (new Date(endDateFilter).getTime() + 86400000);
     }
 
-    return matchesSearch && matchesClass && matchesType && matchesStudent && matchesDate;
+    return matchesSearch && matchesClass && matchesType && matchesStudent && matchesStatus && matchesDate;
   });
 
   // Estatísticas do topo
@@ -213,7 +221,7 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({
 
       {/* Barra de Filtros e Busca */}
       <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           {/* Busca por aluno ou material */}
           <div className="relative lg:col-span-2">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -253,6 +261,20 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({
               <option value="palavras">Lista de Palavras</option>
               <option value="pseudopalavras">Pseudopalavras</option>
               <option value="texto_curto">Texto Curto</option>
+            </select>
+          </div>
+
+          {/* Filtro por Status da Avaliação */}
+          <div>
+            <select
+              value={selectedStatusFilter}
+              onChange={(e) => setSelectedStatusFilter(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+            >
+              <option value="all">Status: Todos</option>
+              <option value="nao_avaliada">Não Avaliadas</option>
+              <option value="em_correcao">Em Correção (Rascunho)</option>
+              <option value="revisada">Revisadas pelo Professor</option>
             </select>
           </div>
         </div>
@@ -334,6 +356,24 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
                       {a.modalidade === '60_segundos' ? '60 Segundos' : 'Livre'}
                     </span>
+
+                    {/* Badge de Correção / Avaliação da Leitura */}
+                    {a.avaliacao_detalhes?.estado_correcao === 'revisada' ? (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                        <span>Revisada pelo professor</span>
+                      </span>
+                    ) : a.avaliacao_detalhes?.estado_correcao === 'em_correcao' ? (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                        <Clock className="w-3 h-3 text-amber-600" />
+                        <span>Em correção (Rascunho)</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                        <Info className="w-3 h-3 text-slate-400" />
+                        <span>Não avaliada</span>
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
@@ -354,6 +394,21 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({
                       {formatDateTimeCuiaba(a.created_at)}
                     </span>
                   </div>
+
+                  {/* Indicadores pedagógicos caso a avaliação já tenha sido revisada */}
+                  {a.avaliacao_detalhes?.estado_correcao === 'revisada' && a.avaliacao_detalhes?.calculos && (
+                    <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
+                      <span className="font-semibold px-2 py-0.5 rounded-md bg-blue-50 text-blue-800 border border-blue-200">
+                        PCPM: <strong className="font-mono">{a.avaliacao_detalhes.calculos.pcpm}</strong>
+                      </span>
+                      <span className="font-semibold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200">
+                        Precisão: <strong className="font-mono">{a.avaliacao_detalhes.calculos.precisaoPercentual}%</strong>
+                      </span>
+                      <span className="text-slate-500 text-[11px]">
+                        ({a.avaliacao_detalhes.calculos.totalCorretas} corretas de {a.avaliacao_detalhes.calculos.totalPalavrasTrecho} no trecho avaliado)
+                      </span>
+                    </div>
+                  )}
 
                   {a.observacoes && (
                     <p className="text-xs text-slate-600 italic bg-slate-50 p-2 rounded-lg border border-slate-100 line-clamp-2">
@@ -377,6 +432,69 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({
                   )}
 
                   <div className="flex items-center justify-end gap-1.5">
+                    {/* Botão Avaliar Leitura */}
+                    <button
+                      type="button"
+                      onClick={() => onOpenCorrection?.(a)}
+                      className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-xs shadow-xs transition-all ${
+                        a.avaliacao_detalhes?.estado_correcao === 'revisada'
+                          ? 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200'
+                          : a.avaliacao_detalhes?.estado_correcao === 'em_correcao'
+                          ? 'bg-amber-600 text-white hover:bg-amber-700 shadow-amber-500/20'
+                          : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-500/20'
+                      }`}
+                      title={
+                        a.avaliacao_detalhes?.estado_correcao === 'revisada'
+                          ? 'Ver e revisar marcações da leitura'
+                          : a.avaliacao_detalhes?.estado_correcao === 'em_correcao'
+                          ? 'Continuar correção em andamento'
+                          : 'Avaliar leitura do aluno'
+                      }
+                    >
+                      {a.avaliacao_detalhes?.estado_correcao === 'revisada' ? (
+                        <>
+                          <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Revisar Leitura</span>
+                        </>
+                      ) : a.avaliacao_detalhes?.estado_correcao === 'em_correcao' ? (
+                        <>
+                          <Clock className="w-3.5 h-3.5" />
+                          <span>Continuar Avaliação</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>Avaliar Leitura</span>
+                        </>
+                      )}
+                    </button>
+
+                    {/* Exportar PDF Individual quando revisada */}
+                    {a.avaliacao_detalhes?.estado_correcao === 'revisada' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const school = schools.find((s) => s.id === a.escola_id);
+                          pdfExportService.exportIndividualAssessmentPDF(
+                            a,
+                            student,
+                            turma,
+                            school,
+                            a.avaliacao_detalhes!
+                          );
+                          addToast(
+                            'Relatório PDF Gerado',
+                            `Relatório individual de ${student?.nome || 'aluno'} gerado com sucesso.`,
+                            'success'
+                          );
+                        }}
+                        className="p-2 text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-xl transition-colors"
+                        title="Exportar Relatório Individual (PDF)"
+                      >
+                        <FileDown className="w-4 h-4 text-indigo-600" />
+                      </button>
+                    )}
+
                     <button
                       type="button"
                       onClick={() => setViewingAssessment(a)}

@@ -177,6 +177,36 @@ export const assessmentService = {
     return updated;
   },
 
+  /**
+   * Salva os detalhes completos da correção (rascunho ou revisão finalizada).
+   */
+  async saveEvaluationDetails(id: string, details: import('../types/database').EvaluationDetails): Promise<Assessment> {
+    const list = getLocalAssessments();
+    const index = list.findIndex((a) => a.id === id);
+    if (index === -1) throw new Error('Avaliação não encontrada.');
+
+    const updated: Assessment = {
+      ...list[index],
+      avaliacao_detalhes: details,
+      status: details.estado_correcao === 'revisada' ? 'analisada' : 'em_andamento',
+      updated_at: new Date().toISOString(),
+    };
+
+    try {
+      await updateDoc(doc(db, COLLECTION_NAME, id), {
+        avaliacao_detalhes: details,
+        status: updated.status,
+        updated_at: updated.updated_at,
+      });
+    } catch (err) {
+      console.warn('Erro ao atualizar detalhes no Firestore, mantendo no cache local:', err);
+    }
+
+    list[index] = updated;
+    saveLocalAssessments(list);
+    return updated;
+  },
+
   async delete(id: string): Promise<void> {
     const record = await this.getById(id);
 

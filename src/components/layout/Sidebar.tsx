@@ -53,11 +53,11 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'import', label: 'Importar Alunos', icon: FileSpreadsheet },
   { 
     id: 'reports', 
-    label: 'Relatórios', 
+    label: 'Relatórios & Diagnósticos', 
     icon: BarChart3, 
-    badge: 'Fase 3', 
+    badge: 'Fluência', 
     badgeColor: 'bg-purple-100 text-purple-800 border-purple-200',
-    isUpcoming: true 
+    isUpcoming: false 
   },
   { id: 'profile', label: 'Meu Perfil', icon: UserCheck },
 ];

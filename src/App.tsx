@@ -9,10 +9,11 @@ import { StudentsPage } from './components/pages/StudentsPage';
 import { ReadingMaterialsPage } from './components/pages/ReadingMaterialsPage';
 import { AssessmentsPage } from './components/pages/AssessmentsPage';
 import { ImportStudentsPage } from './components/pages/ImportStudentsPage';
-import { ReportsPlaceholderPage } from './components/pages/ReportsPlaceholderPage';
+import { ReportsPage } from './components/pages/ReportsPage';
 import { ProfilePage } from './components/pages/ProfilePage';
 import { AuthPages } from './components/pages/AuthPages';
 import { NewAssessmentFlowModal } from './components/assessments/NewAssessmentFlowModal';
+import { ReadingCorrectionModal } from './components/assessments/ReadingCorrectionModal';
 
 import { 
   School, 
@@ -20,7 +21,8 @@ import {
   Student, 
   NavigationPage, 
   ReadingMaterial, 
-  Assessment 
+  Assessment,
+  EvaluationDetails 
 } from './types/database';
 import { schoolService, CreateSchoolDTO } from './services/schoolService';
 import { classService, CreateClassDTO } from './services/classService';
@@ -50,6 +52,10 @@ function MainApp() {
   const [preselectedClassId, setPreselectedClassId] = useState<string>('');
   const [preselectedStudentId, setPreselectedStudentId] = useState<string>('');
   const [preselectedMaterialId, setPreselectedMaterialId] = useState<string>('');
+
+  // Assessment correction & evaluation modal (Phase 3)
+  const [correctionAssessment, setCorrectionAssessment] = useState<Assessment | null>(null);
+  const [isCorrectionModalOpen, setIsCorrectionModalOpen] = useState(false);
 
   // Load all initial entities
   const loadAllData = useCallback(async () => {
@@ -249,6 +255,28 @@ function MainApp() {
     setAssessments((prev) => prev.map((a) => (a.id === id ? updated : a)));
   };
 
+  // Reading evaluation handlers (Phase 3)
+  const handleOpenCorrection = (assessment: Assessment) => {
+    setCorrectionAssessment(assessment);
+    setIsCorrectionModalOpen(true);
+  };
+
+  const handleSaveEvaluation = async (assessmentId: string, details: EvaluationDetails) => {
+    try {
+      const updated = await assessmentService.saveEvaluationDetails(assessmentId, details);
+      setAssessments((prev) => prev.map((a) => (a.id === assessmentId ? updated : a)));
+      if (details.estado_correcao === 'revisada') {
+        addToast('Avaliação Concluída!', 'Os indicadores de fluência e a correção foram salvos com sucesso.', 'success');
+      } else {
+        addToast('Rascunho Salvo', 'A correção em andamento foi armazenada.', 'info');
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro ao salvar avaliação.';
+      addToast('Erro ao salvar', msg, 'error');
+      throw err;
+    }
+  };
+
   // Triggering new assessment flow with presets
   const handleOpenNewAssessment = (studentId?: string, classId?: string, materialId?: string) => {
     setPreselectedStudentId(studentId || '');
@@ -387,6 +415,7 @@ function MainApp() {
           onOpenNewAssessment={() => handleOpenNewAssessment()}
           onDeleteAssessment={handleDeleteAssessment}
           onUpdateNotes={handleUpdateAssessmentNotes}
+          onOpenCorrection={handleOpenCorrection}
         />
       )}
 
@@ -401,7 +430,14 @@ function MainApp() {
       )}
 
       {currentPage === 'reports' && (
-        <ReportsPlaceholderPage onNavigate={setCurrentPage} />
+        <ReportsPage
+          assessments={assessments}
+          students={students}
+          classes={classes}
+          schools={schools}
+          materials={materials}
+          onOpenCorrection={handleOpenCorrection}
+        />
       )}
 
       {currentPage === 'profile' && (
@@ -423,6 +459,27 @@ function MainApp() {
         preselectedClassId={preselectedClassId}
         preselectedStudentId={preselectedStudentId}
         onSaveAssessment={handleSaveAssessment}
+      />
+
+      {/* Modal de Avaliação e Correção de Leitura (Fase 3) */}
+      <ReadingCorrectionModal
+        isOpen={isCorrectionModalOpen}
+        onClose={() => {
+          setIsCorrectionModalOpen(false);
+          setCorrectionAssessment(null);
+        }}
+        assessment={correctionAssessment}
+        student={
+          correctionAssessment
+            ? students.find((s) => s.id === correctionAssessment.aluno_id || s.id === correctionAssessment.student_id) || null
+            : null
+        }
+        classRoom={
+          correctionAssessment
+            ? classes.find((c) => c.id === correctionAssessment.turma_id) || null
+            : null
+        }
+        onSaveEvaluation={handleSaveEvaluation}
       />
     </AppLayout>
   );
